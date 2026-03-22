@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Logs - British Airways PTFS</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Activity Logs</h1>
+            <button class="logout-btn" onclick="goBack()">Back to Admin</button>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            Loading activity logs...
+        </div>
+
+        <div id="content" style="display: none;">
+            <div id="logsContainer" class="activity-log-container">
+                <!-- Logs will be populated here -->
+            </div>
+        </div>
+
+        <div id="errorDiv" class="error-message" style="display: none;"></div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/supabase.js"></script>
+    <script>
+        window.addEventListener('load', async () => {
+            try {
+                supabaseAuth = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                const user = await supabaseAuth.init();
+                
+                if (!user) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                const isAdmin = await supabaseAuth.isAdmin();
+                if (!isAdmin) {
+                    document.getElementById('errorDiv').textContent = 'Access Denied: Admin only';
+                    document.getElementById('errorDiv').style.display = 'block';
+                    return;
+                }
+
+                loadActivityLogs();
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('errorDiv').textContent = 'Error: ' + error.message;
+                document.getElementById('errorDiv').style.display = 'block';
+            }
+        });
+
+        async function loadActivityLogs() {
+            try {
+                const logs = await supabaseAuth.getActivityLogs();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+
+                const container = document.getElementById('logsContainer');
+                if (!logs || logs.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #95a5a6;">No activity logs yet</div>';
+                    return;
+                }
+
+                container.innerHTML = logs.map(log => `
+                    <div class="log-entry">
+                        <div class="log-header">
+                            <span class="log-admin">${log.admin_username}</span>
+                            <span class="log-action">${log.action}</span>
+                            <span class="log-time">${new Date(log.created_at).toLocaleString()}</span>
+                        </div>
+                        <div class="log-details">${log.details}</div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                document.getElementById('errorDiv').textContent = 'Error loading logs: ' + error.message;
+                document.getElementById('errorDiv').style.display = 'block';
+            }
+        }
+
+        function goBack() {
+            window.location.href = 'admin-dashboard.html';
+        }
+    </script>
+</body>
+</html>

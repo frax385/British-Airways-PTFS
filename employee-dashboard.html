@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Dashboard - British Airways PTFS</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            Loading your dashboard...
+        </div>
+
+        <div id="content" style="display: none;">
+            <!-- Welcome Section -->
+            <div class="employee-welcome">
+                <h2 class="welcome-title">Welcome back,</h2>
+                <h1 class="employee-username" id="employeeUsername">User</h1>
+                <button class="logout-btn" style="position: absolute; top: 40px; right: 40px;" onclick="logout()">Logout</button>
+            </div>
+
+            <!-- Stats Section -->
+            <div class="employee-stats">
+                <div class="stat-card rank-card">
+                    <div class="stat-label">Your Rank</div>
+                    <div class="stat-value rank-value" id="employeeRank">-</div>
+                </div>
+                <div class="stat-card robux-card">
+                    <div class="stat-label">Robux Earned</div>
+                    <div class="stat-value robux-value" id="employeeRobux">0</div>
+                </div>
+            </div>
+
+
+
+            <!-- Notes Section -->
+            <div class="employee-notes-section">
+                <div class="notes-card">
+                    <div class="notes-header">
+                        <h3>Notes from Admin</h3>
+                        <span class="admin-indicator" id="adminIndicator">-</span>
+                    </div>
+                    <div class="notes-content" id="employeeNotes">
+                        No notes yet - keep up the great work!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cashout Info -->
+            <div class="cashout-reminder">
+                <div class="cashout-card">
+                    <h3>💰 Cashout Information</h3>
+                    <p>Once you earn <strong>100 robux or more</strong>, open a ticket in our Discord server to claim your rewards! Our admins will process your cashout to your Roblox account.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorDiv" class="error-message" style="display: none;"></div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/supabase.js"></script>
+    <script>
+        window.addEventListener('load', async () => {
+            try {
+                supabaseAuth = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                const user = await supabaseAuth.init();
+                
+                // Check if user is logged in
+                if (!user) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                // Load employee data
+                const employee = await supabaseAuth.getCurrentUserInfo();
+                
+                if (!employee) {
+                    document.getElementById('errorDiv').textContent = 'Employee profile not found';
+                    document.getElementById('errorDiv').style.display = 'block';
+                    return;
+                }
+
+                // Display welcome message with username
+                const employeeUsername = employee.username || employee.name;
+                document.getElementById('employeeUsername').textContent = employeeUsername;
+
+                // Display employee stats
+                document.getElementById('employeeRank').textContent = employee.rank || '-';
+                document.getElementById('employeeRobux').textContent = (employee.robux || 0).toLocaleString();
+
+
+
+                // Display notes and admin info
+                if (employee.notes && employee.notes.trim()) {
+                    document.getElementById('employeeNotes').textContent = employee.notes;
+                    const adminName = employee.notes_set_by || 'Admin';
+                    document.getElementById('adminIndicator').textContent = `Sent by: ${adminName}`;
+                    document.getElementById('adminIndicator').style.color = '#667eea';
+                } else {
+                    document.getElementById('employeeNotes').textContent = 'No notes yet - keep up the great work!';
+                    document.getElementById('adminIndicator').textContent = '-';
+                }
+
+                // Hide loading, show content
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('errorDiv').textContent = 'Error loading data: ' + error.message;
+                document.getElementById('errorDiv').style.display = 'block';
+            }
+        });
+
+        async function logout() {
+            try {
+                await supabaseAuth.logout();
+                window.location.href = 'index.html';
+            } catch (error) {
+                alert('Logout error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

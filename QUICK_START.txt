@@ -1,0 +1,110 @@
+# Quick Reference Guide
+
+## Your Project Structure
+
+```
+british airways PTFS website/
+├── index.html                    (Login page)
+├── employee-dashboard.html       (Employee view - shows robux & rank)
+├── admin-dashboard.html          (Admin panel - manage employees)
+├── SETUP.md                      (This guide - read this first!)
+├── css/
+│   └── style.css                (All styling)
+└── js/
+    ├── config.js                (Supabase credentials - YOU FILL THIS IN)
+    └── supabase.js              (Backend code - don't touch)
+```
+
+## Setup Checklist
+
+- [ ] Create Supabase account at https://supabase.com
+- [ ] Create project and get credentials
+- [ ] Run SQL for database tables
+- [ ] Create admin user in Supabase
+- [ ] Update `js/config.js` with credentials
+- [ ] Test locally - open `index.html`
+- [ ] Create GitHub account if you don't have one
+- [ ] Create GitHub repository
+- [ ] Upload files to GitHub
+- [ ] Enable GitHub Pages
+- [ ] Test live website
+
+## Example Login Credentials (After Setup)
+
+**Admin Account:**
+- Email: `admin@example.com`
+- Password: (the one you chose)
+
+**Example Employee Account:**
+- Name: John Smith
+- Email: john.smith@example.com
+- Password: (you set this when creating)
+- Rank: Employee
+- Robux: 100
+
+## Key Features Working Now
+
+1. **Authentication:** Users log in with email + password
+2. **Employee Dashboard:** Shows their rank and robux
+3. **Admin Panel:** 
+   - Create new employee accounts
+   - Edit robux amounts
+   - Change ranks
+   - Delete employees
+4. **Security:** Data is encrypted, only admins can manage
+
+## Testing Without GitHub
+
+1. Just open `index.html` in your browser
+2. It will work locally as long as you have internet (for Supabase)
+3. Perfect for testing before going live!
+
+## What Happens When Employee Logs In
+
+1. They enter email & password
+2. Goes to employee-dashboard.html
+3. Sees their name, email, rank, and robux count
+4. Can log out
+
+## What Admins Can Do
+
+1. Log in with admin account
+2. See list of all employees
+3. Click Edit to change robux or rank
+4. Click Delete to remove employee
+5. Create new employee accounts with email & password
+
+## Important Files to Customize
+
+Want to change something? Edit these:
+
+- **Colors/Styling:** `css/style.css`
+- **Title:** Find "British Airways PTFS" in HTML files
+- **Text:** Look in the HTML files directly
+
+## Keep These Safe
+
+- Your Supabase credentials in `js/config.js`
+- Your GitHub repository (don't share with anyone)
+
+## Useful Links
+
+- Supabase: https://supabase.com
+- GitHub: https://github.com
+- Your live site: https://YOUR_USERNAME.github.io/british-airways-ptfs
+
+## Common Mistakes
+
+❌ Forgetting to fill in `js/config.js`
+❌ Not creating employee records in admin dashboard first
+❌ Sharing Supabase credentials publicly
+❌ Typos in email addresses (they must match!)
+
+✅ Do test locally first
+✅ Do create admin user immediately after setup
+✅ Do keep backups of credentials
+✅ Do test each feature
+
+---
+
+**You're all set! Follow SETUP.md step by step. Should take 30 minutes total.**

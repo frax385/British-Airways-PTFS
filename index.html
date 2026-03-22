@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>British Airways PTFS - Login</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="page-title">British Airways PTFS</div>
+    
+    <div class="container">
+        <h1>Employee Login</h1>
+        <form id="loginForm" method="POST" onsubmit="return false;">
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" placeholder="Enter your username">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter your password">
+            </div>
+
+            <button type="button" class="staff-login-btn" onclick="handleLoginClick(); return false;" style="width: 100%; padding: 12px; font-size: 16px;">Sign In</button>
+        </form>
+
+        <button class="staff-login-btn" style="margin-top: 20px; background: #3498db;" id="adminLoginBtn">Admin Login</button>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="adminModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeAdminBtn">&times;</span>
+            <h2>Admin Login</h2>
+            <form id="adminLoginForm" method="POST" onsubmit="return false;">
+                <div id="adminErrorMessage" class="error-message" style="display: none;"></div>
+
+                <div class="form-group">
+                    <label for="admin-email">Admin Email</label>
+                    <input type="email" id="admin-email" placeholder="Enter admin email">
+                </div>
+
+                <div class="form-group">
+                    <label for="admin-password">Admin Password</label>
+                    <input type="password" id="admin-password" placeholder="Enter admin password">
+                </div>
+
+                <button type="button" class="staff-login-btn" onclick="handleAdminClick(); return false;" style="width: 100%; padding: 12px; font-size: 16px;">Admin Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/supabase.js"></script>
+    <script>
+        var supabaseReady = false;
+
+        // Start initialization immediately after scripts load
+        console.log('=== SCRIPTS LOADED ===');
+        
+        // Wait for config to be available, then initialize
+        function ensureInitialized() {
+            console.log('Checking if ready to initialize...');
+            console.log('SUPABASE_URL:', typeof SUPABASE_URL);
+            console.log('SUPABASE_ANON_KEY:', typeof SUPABASE_ANON_KEY);
+            console.log('SupabaseClient:', typeof SupabaseClient);
+            
+            if (typeof SUPABASE_URL !== 'undefined' && 
+                typeof SUPABASE_ANON_KEY !== 'undefined' && 
+                typeof SupabaseClient !== 'undefined') {
+                
+                console.log('All dependencies ready, initializing Supabase...');
+                supabaseAuth = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('SupabaseAuth created');
+                
+                supabaseAuth.init()
+                    .then(function(user) {
+                        console.log('Supabase initialized successfully');
+                        supabaseReady = true;
+                        
+                        if (user) {
+                            console.log('User already logged in, redirecting...');
+                            supabaseAuth.isAdmin().then(function(isAdmin) {
+                                window.location.href = isAdmin ? 'admin-dashboard.html' : 'employee-dashboard.html';
+                            });
+                        }
+                    })
+                    .catch(function(e) {
+                        console.error('Supabase init error (continuing anyway):', e);
+                        supabaseReady = true; // Mark as ready even with error so user can try logging in
+                    });
+            } else {
+                console.log('Dependencies not ready yet, will try again...');
+                setTimeout(ensureInitialized, 100);
+            }
+        }
+
+        // Start checking for dependencies
+        ensureInitialized();
+
+        window.handleLoginClick = function() {
+            console.log('=== EMPLOYEE LOGIN CLICKED ===');
+            var username = document.getElementById('username').value;
+            var password = document.getElementById('password').value;
+            var err = document.getElementById('errorMessage');
+
+            if (!username || !password) {
+                err.textContent = 'Please enter username and password';
+                err.style.display = 'block';
+                return false;
+            }
+
+            if (!supabaseReady) {
+                console.log('System still initializing, showing message...');
+                err.textContent = 'System initializing, please wait...';
+                err.style.display = 'block';
+                return false;
+            }
+
+            if (!supabaseAuth) {
+                console.error('supabaseAuth is null');
+                err.textContent = 'System error - please refresh the page';
+                err.style.display = 'block';
+                return false;
+            }
+
+            err.style.display = 'none';
+            console.log('Attempting login with username:', username);
+            
+            supabaseAuth.loginByUsername(username, password)
+                .then(function(res) {
+                    console.log('Login successful');
+                    if (res && res.user) {
+                        supabaseAuth.currentUser = res.user;
+                    }
+                    return supabaseAuth.isAdmin();
+                })
+                .then(function(isAdmin) {
+                    console.log('isAdmin:', isAdmin);
+                    var url = isAdmin ? 'admin-dashboard.html' : 'employee-dashboard.html';
+                    console.log('Redirecting to:', url);
+                    window.location.href = url;
+                })
+                .catch(function(error) {
+                    console.error('Login error:', error);
+                    err.textContent = 'Login failed: ' + error.message;
+                    err.style.display = 'block';
+                });
+            
+            return false;
+        };
+
+        window.handleAdminClick = function() {
+            console.log('=== ADMIN LOGIN CLICKED ===');
+            var email = document.getElementById('admin-email').value;
+            var password = document.getElementById('admin-password').value;
+            var err = document.getElementById('adminErrorMessage');
+
+            if (!email || !password) {
+                err.textContent = 'Please enter email and password';
+                err.style.display = 'block';
+                return false;
+            }
+
+            if (!supabaseReady) {
+                console.log('System still initializing, showing message...');
+                err.textContent = 'System initializing, please wait...';
+                err.style.display = 'block';
+                return false;
+            }
+
+            if (!supabaseAuth) {
+                console.error('supabaseAuth is null');
+                err.textContent = 'System error - please refresh the page';
+                err.style.display = 'block';
+                return false;
+            }
+
+            err.style.display = 'none';
+            console.log('Attempting admin login with email:', email);
+            
+            supabaseAuth.login(email, password)
+                .then(function(res) {
+                    console.log('Admin login successful');
+                    if (res && res.user) {
+                        supabaseAuth.currentUser = res.user;
+                    }
+                    return supabaseAuth.isAdmin();
+                })
+                .then(function(isAdmin) {
+                    console.log('isAdmin:', isAdmin);
+                    if (!isAdmin) {
+                        throw new Error('You do not have admin access');
+                    }
+                    console.log('Redirecting to admin-dashboard.html');
+                    window.location.href = 'admin-dashboard.html';
+                })
+                .catch(function(error) {
+                    console.error('Admin login error:', error);
+                    err.textContent = 'Admin login failed: ' + error.message;
+                    err.style.display = 'block';
+                });
+            
+            return false;
+        };
+
+        window.addEventListener('load', function() {
+            console.log('=== PAGE FULLY LOADED ===');
+            
+            // Setup modal handlers
+            var adminBtn = document.getElementById('adminLoginBtn');
+            if (adminBtn) {
+                console.log('Setting up admin button');
+                adminBtn.addEventListener('click', function() {
+                    console.log('Admin button clicked');
+                    document.getElementById('adminModal').style.display = 'block';
+                });
+            }
+
+            var closeBtn = document.getElementById('closeAdminBtn');
+            if (closeBtn) {
+                console.log('Setting up close button');
+                closeBtn.addEventListener('click', function() {
+                    console.log('Closing modal');
+                    document.getElementById('adminModal').style.display = 'none';
+                });
+            }
+
+            window.onclick = function(event) {
+                var modal = document.getElementById('adminModal');
+                if (event.target === modal) {
+                    console.log('Closed modal via background');
+                    modal.style.display = 'none';
+                }
+            };
+        });
+    </script>
+</body>
+</html>

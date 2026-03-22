@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - British Airways PTFS</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Admin Dashboard</h1>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <span class="welcome-message" id="welcomeMessage">Welcome back!</span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="admin-controls">
+            <h2>Create New Employee</h2>
+            <div id="createSuccessMessage" class="success-message" style="display: none;"></div>
+            <div id="createErrorMessage" class="error-message" style="display: none;"></div>
+            
+            <form id="createForm">
+                <div class="form-group">
+                    <label for="newUsername">Username</label>
+                    <input type="text" id="newUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="newEmail">Email</label>
+                    <input type="email" id="newEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">Password</label>
+                    <input type="password" id="newPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="newRole">Base Role</label>
+                    <select id="newRole" required>
+                        <option value="">Select a role...</option>
+                        <option value="Pilot">Pilot</option>
+                        <option value="Air Traffic Control">Air Traffic Control</option>
+                        <option value="Ground Operator">Ground Operator</option>
+                        <option value="Flight Attendant">Flight Attendant</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="newRank">Rank</label>
+                    <select id="newRank" required>
+                        <option value="">Select role first...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="newNotes">Notes</label>
+                    <textarea id="newNotes" style="width: 100%; padding: 10px; border: 2px solid #bdc3c7; border-radius: 8px; font-size: 14px; resize: vertical; height: 60px;"></textarea>
+                </div>
+                <button type="submit">Create Employee</button>
+            </form>
+        </div>
+
+        <h2>Manage Employees</h2>
+        
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Search by name, rank...">
+            <button onclick="filterEmployees()">Search</button>
+            <button onclick="resetFilter()">Reset</button>
+        </div>
+
+        <div id="loadingEmployees" class="loading">
+            <div class="spinner"></div>
+            Loading employees...
+        </div>
+
+        <div id="employeesContent" style="display: none;">
+            <div id="successMessage" class="success-message" style="display: none;"></div>
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            
+            <table class="employees-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Rank</th>
+                        <th>Robux</th>
+                        <th>Notes</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="employeesList">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="activity-log">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>Recent Activity</h3>
+                <button onclick="goToActivityLog()" style="padding: 8px 15px; font-size: 12px; max-width: 150px;">View All Logs</button>
+            </div>
+            <div id="activityList">
+                <div style="color: #95a5a6; text-align: center; padding: 20px;">No activity yet</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeEditModal()">&times;</span>
+            <h2>Edit Employee</h2>
+            <form id="editForm">
+                <div id="editErrorMessage" class="error-message" style="display: none;"></div>
+                
+                <input type="hidden" id="editEmployeeId">
+                
+                <div class="form-group">
+                    <label for="editName">Name</label>
+                    <input type="text" id="editName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editRole">Base Role</label>
+                    <select id="editRole" required>
+                        <option value="">Select a role...</option>
+                        <option value="Pilot">Pilot</option>
+                        <option value="Air Traffic Control">Air Traffic Control</option>
+                        <option value="Ground Operator">Ground Operator</option>
+                        <option value="Flight Attendant">Flight Attendant</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editRank">Rank</label>
+                    <select id="editRank" required>
+                        <option value="">Select role first...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editRobux">Robux</label>
+                    <input type="number" id="editRobux" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="editNotes">Notes</label>
+                    <textarea id="editNotes" style="width: 100%; padding: 10px; border: 2px solid #bdc3c7; border-radius: 8px; font-size: 14px; resize: vertical; height: 60px;"></textarea>
+                </div>
+                <button type="submit">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/supabase.js"></script>
+    <script>
+        let currentEditingEmployeeId;
+
+        // Role and Rank mapping
+        const roleRankMap = {
+            'Pilot': ['Trail Pilot', 'Pilot', 'Senior Pilot', 'Lead Pilot'],
+            'Air Traffic Control': ['Trail Air Traffic Control', 'Air Traffic Control', 'Senior Air Traffic Control', 'Lead Air Traffic Control'],
+            'Ground Operator': ['Trail Ground Operator', 'Ground Operator', 'Senior Ground Operator', 'Lead Ground Operator'],
+            'Flight Attendant': ['Trail Flight Attendant', 'Flight Attendant', 'Senior Flight Attendant', 'Lead Flight Attendant'],
+            'Admin': ['Admin', 'Senior Admin', 'Lead Admin']
+        };
+
+        function updateRankOptions(rankSelectId) {
+            let roleSelectId;
+            if (rankSelectId === 'newRank') {
+                roleSelectId = 'newRole';
+            } else {
+                roleSelectId = 'editRole';
+            }
+
+            const roleSelect = document.getElementById(roleSelectId);
+            const rankSelect = document.getElementById(rankSelectId);
+            const selectedRole = roleSelect ? roleSelect.value : '';
+            
+            if (!rankSelect) {
+                console.error('Rank select element not found:', rankSelectId);
+                return;
+            }
+
+            // Clear existing options
+            while (rankSelect.options.length > 0) {
+                rankSelect.remove(0);
+            }
+
+            if (!selectedRole || !roleRankMap[selectedRole]) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Select role first...';
+                rankSelect.appendChild(option);
+                return;
+            }
+
+            // Populate rank options based on selected role
+            const ranks = roleRankMap[selectedRole];
+            ranks.forEach(rank => {
+                const option = document.createElement('option');
+                option.value = rank;
+                option.textContent = rank;
+                rankSelect.appendChild(option);
+            });
+            
+            // Auto-select first option
+            if (rankSelect.options.length > 0) {
+                rankSelect.selectedIndex = 0;
+            }
+        }
+
+        window.addEventListener('load', async () => {
+            try {
+                supabaseAuth = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                const user = await supabaseAuth.init();
+                
+                if (!user) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                const isAdmin = await supabaseAuth.isAdmin();
+                if (!isAdmin) {
+                    document.getElementById('errorMessage').textContent = 'Access Denied: Admin only';
+                    document.getElementById('errorMessage').style.display = 'block';
+                    return;
+                }
+
+                // Load and display admin username
+                const adminData = await supabaseAuth.getCurrentUserInfo();
+                currentAdminUsername = adminData?.username || adminData?.name || 'Admin';
+                document.getElementById('welcomeMessage').textContent = `Welcome back, ${currentAdminUsername}!`;
+
+                // Load employees
+                loadEmployees();
+                loadRecentActivity();
+
+                // Setup create form
+                document.getElementById('createForm').addEventListener('submit', handleCreateEmployee);
+                document.getElementById('editForm').addEventListener('submit', handleEditEmployee);
+                
+                // Setup role dropdowns to update ranks
+                document.getElementById('newRole').addEventListener('change', function() {
+                    updateRankOptions('newRank');
+                });
+                
+                document.getElementById('editRole').addEventListener('change', function() {
+                    updateRankOptions('editRank');
+                });
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('errorMessage').textContent = 'Error: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        });
+
+        let allEmployees = [];
+        let currentAdminUsername = '';
+
+        // Rank hierarchy for sorting
+        const rankHierarchy = {
+            'Lead Admin': 0,
+            'Senior Admin': 1,
+            'Lead Pilot': 2,
+            'Pilot': 3,
+            'Trail Pilot': 4,
+            'Lead Air Traffic Control': 5,
+            'Air Traffic Control': 6,
+            'Trail Air Traffic Control': 7,
+            'Lead Ground Operator': 8,
+            'Ground Operator': 9,
+            'Trail Ground Operator': 10,
+            'Lead Flight Attendant': 11,
+            'Flight Attendant': 12,
+            'Trail Flight Attendant': 13,
+            'Admin': 14,
+            'Employee': 15
+        };
+
+        function addActivityLog(action, details) {
+            supabaseAuth.addActivityLog(action, details).then(() => {
+                loadRecentActivity();
+            }).catch(err => {
+                console.error('Error logging activity:', err);
+            });
+        }
+
+        async function loadRecentActivity() {
+            try {
+                const logs = await supabaseAuth.getActivityLogs();
+                const activityList = document.getElementById('activityList');
+                
+                if (!logs || logs.length === 0) {
+                    activityList.innerHTML = '<div style="color: #95a5a6; text-align: center; padding: 20px;">No activity yet</div>';
+                    return;
+                }
+                
+                activityList.innerHTML = logs.slice(0, 5).map(log => `
+                    <div class="activity-item">
+                        <strong>${log.admin_username}</strong> - ${log.action}: ${log.details}
+                        <span class="activity-timestamp">${new Date(log.created_at).toLocaleString()}</span>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading activity:', error);
+            }
+        }
+
+        function goToActivityLog() {
+            window.location.href = 'activity-log.html';
+        }
+
+        function sortEmployeesByRank(employees) {
+            return employees.sort((a, b) => {
+                const rankA = rankHierarchy[a.rank] !== undefined ? rankHierarchy[a.rank] : 999;
+                const rankB = rankHierarchy[b.rank] !== undefined ? rankHierarchy[b.rank] : 999;
+                return rankA - rankB;
+            });
+        }
+
+        async function loadEmployees() {
+            try {
+                document.getElementById('loadingEmployees').style.display = 'block';
+                document.getElementById('employeesContent').style.display = 'none';
+
+                allEmployees = await supabaseAuth.getAllEmployees();
+                allEmployees = sortEmployeesByRank(allEmployees);
+                displayEmployees(allEmployees);
+
+                document.getElementById('loadingEmployees').style.display = 'none';
+                document.getElementById('employeesContent').style.display = 'block';
+
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = 'Error loading employees: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        }
+
+        function displayEmployees(employees) {
+            const tbody = document.getElementById('employeesList');
+            tbody.innerHTML = '';
+
+            employees.forEach(emp => {
+                const row = document.createElement('tr');
+                const notes = emp.notes || '-';
+                row.innerHTML = `
+                    <td data-label="Name">${emp.name}</td>
+                    <td data-label="Rank">${emp.rank}</td>
+                    <td data-label="Robux">${emp.robux || 0}</td>
+                    <td data-label="Notes">${notes.substring(0, 20)}${notes.length > 20 ? '...' : ''}</td>
+                    <td data-label="Actions">
+                        <button class="edit-btn" onclick="openEditModal('${emp.id}', '${emp.name}', '${emp.rank}', ${emp.robux || 0}, '${(emp.notes || '').replace(/'/g, "\\'")}')">Edit</button>
+                        <button class="delete-btn" onclick="deleteEmployee('${emp.id}', '${emp.name}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterEmployees() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allEmployees.filter(emp => 
+                emp.name.toLowerCase().includes(searchTerm) || 
+                emp.rank.toLowerCase().includes(searchTerm)
+            );
+            displayEmployees(filtered);
+        }
+
+        function resetFilter() {
+            document.getElementById('searchInput').value = '';
+            displayEmployees(allEmployees);
+        }
+
+        async function handleCreateEmployee(e) {
+            e.preventDefault();
+            const errorDiv = document.getElementById('createErrorMessage');
+            const successDiv = document.getElementById('createSuccessMessage');
+
+            try {
+                errorDiv.style.display = 'none';
+                successDiv.style.display = 'none';
+
+                const username = document.getElementById('newUsername').value;
+                const email = document.getElementById('newEmail').value;
+                const password = document.getElementById('newPassword').value;
+                const rank = document.getElementById('newRank').value;
+                const notes = document.getElementById('newNotes').value;
+
+                await supabaseAuth.createEmployeeAccount(email, password, username, rank, notes);
+
+                successDiv.textContent = `Employee ${username} created successfully as ${rank}!`;
+                successDiv.style.display = 'block';
+
+                addActivityLog('Created', `${username} as ${rank}`);
+
+                document.getElementById('createForm').reset();
+                loadEmployees();
+
+                setTimeout(() => successDiv.style.display = 'none', 3000);
+
+            } catch (error) {
+                errorDiv.textContent = 'Error creating employee: ' + error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        function openEditModal(employeeId, name, rank, robux, notes) {
+            currentEditingEmployeeId = employeeId;
+            document.getElementById('editEmployeeId').value = employeeId;
+            document.getElementById('editName').value = name;
+            document.getElementById('editRobux').value = robux;
+            document.getElementById('editNotes').value = notes;
+            
+            let role = '';
+            for (const r of Object.keys(roleRankMap)) {
+                if (roleRankMap[r].includes(rank)) {
+                    role = r;
+                    break;
+                }
+            }
+            
+            document.getElementById('editRole').value = role;
+            updateRankOptions('editRank');
+            document.getElementById('editRank').value = rank;
+            
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        async function handleEditEmployee(e) {
+            e.preventDefault();
+            const errorDiv = document.getElementById('editErrorMessage');
+
+            try {
+                errorDiv.style.display = 'none';
+
+                const employeeId = document.getElementById('editEmployeeId').value;
+                const name = document.getElementById('editName').value;
+                const rank = document.getElementById('editRank').value;
+                const robux = parseInt(document.getElementById('editRobux').value);
+                const notes = document.getElementById('editNotes').value;
+
+                await supabaseAuth.updateEmployee(employeeId, {
+                    name,
+                    rank,
+                    robux,
+                    notes
+                });
+
+                document.getElementById('successMessage').textContent = 'Employee updated successfully!';
+                document.getElementById('successMessage').style.display = 'block';
+                
+                addActivityLog('Updated', `${name} - Rank: ${rank}, Robux: ${robux}`);
+
+                closeEditModal();
+                loadEmployees();
+
+                setTimeout(() => {
+                    document.getElementById('successMessage').style.display = 'none';
+                }, 3000);
+
+            } catch (error) {
+                errorDiv.textContent = 'Error updating employee: ' + error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        async function deleteEmployee(employeeId, employeeName) {
+            if (!confirm(`Are you sure you want to delete ${employeeName}? This cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                await supabaseAuth.deleteEmployee(employeeId);
+                document.getElementById('successMessage').textContent = `${employeeName} deleted successfully!`;
+                document.getElementById('successMessage').style.display = 'block';
+                
+                addActivityLog('Deleted', employeeName);
+
+                loadEmployees();
+
+                setTimeout(() => {
+                    document.getElementById('successMessage').style.display = 'none';
+                }, 3000);
+
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = 'Error deleting employee: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        }
+
+        async function logout() {
+            try {
+                await supabaseAuth.logout();
+                window.location.href = 'index.html';
+            } catch (error) {
+                alert('Logout error: ' + error.message);
+            }
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
